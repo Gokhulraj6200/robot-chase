@@ -37,8 +37,11 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_{nullptr};
     rclcpp::TimerBase::SharedPtr timer_{nullptr};
-    const float kp_yaw_ = 0.1;
-    const float kp_distance_ = 0.1; 
+    const float kp_yaw_ = 0.7;
+    const float kp_distance_ = 0.7; 
+    const float max_linear_velocity_ = 0.5;
+    const float max_angular_velocity_ = 1.0;
+
     
     void on_timer() {
     
@@ -60,15 +63,16 @@ private:
 
         float error_yaw = kp_yaw_ * std::atan2(y, x);
         float error_distance = kp_distance_ * std::sqrt(pow(x, 2) + pow(y, 2));
+        float min_linear_velocity_ = (0.5 * error_distance);
         RCLCPP_DEBUG(this->get_logger(), "Error distance: %.4f", error_distance);
         geometry_msgs::msg::Twist velocity;
-        if (error_distance > 0.25) {
-            velocity.angular.z = error_yaw;
-            velocity.linear.x = error_distance;
+        if (error_distance > 0.15) {
+            velocity.angular.z = std::min(error_yaw, max_angular_velocity_);
+            velocity.linear.x = std::min(error_distance, max_linear_velocity_);
         }
-        else if (error_distance < 0.25){
+        else if (error_distance < 0.15 && error_distance > 0.1){
             velocity.angular.z = error_yaw;
-            velocity.linear.x = kp_distance_;
+            velocity.linear.x = min_linear_velocity_;
         }
         else {
             velocity.angular.z = 0;
